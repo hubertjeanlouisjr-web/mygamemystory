@@ -1,0 +1,138 @@
+<meta charset="utf-8">
+<title>Call Delivery — Intake Process Guide</title>
+<style>
+  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:860px;margin:0 auto;
+       padding:32px 24px;color:#1f2937;line-height:1.55;background:#fff}
+  @media (prefers-color-scheme: dark){body{background:#111827;color:#e5e7eb}
+    .card,table{background:#1f2937!important}
+    pre{background:#0b1220!important;color:#a7f3d0!important}
+    th{background:#2e5aac!important}
+    td{border-color:#374151!important}
+    h1{color:#dbe6fa!important}h2{color:#8fb0e8!important}
+    .banner{background:#0f1b33!important}}
+  .banner{background:#1F2A44;color:#fff;padding:26px 28px;border-radius:10px;margin-bottom:28px}
+  .banner h1{margin:0;color:#fff!important;font-size:26px}
+  .banner p{margin:6px 0 0;color:#c9d4ea;font-style:italic}
+  h1{color:#1F2A44;font-size:22px;border-bottom:3px solid #2E5AAC;padding-bottom:6px;margin-top:36px}
+  h2{color:#2E5AAC;font-size:17px;margin-top:24px}
+  table{border-collapse:collapse;width:100%;margin:12px 0}
+  th{background:#2E5AAC;color:#fff;text-align:left;padding:8px 12px;font-size:14px}
+  td{border:1px solid #d7dce6;padding:8px 12px;font-size:14px;vertical-align:top}
+  pre{background:#F2F4F8;color:#1B4D3E;padding:16px;border-radius:8px;overflow-x:auto;
+      font-family:Consolas,Menlo,monospace;font-size:12.5px;line-height:1.45}
+  code{font-family:Consolas,Menlo,monospace;background:rgba(46,90,172,.1);padding:1px 5px;border-radius:4px;font-size:13px}
+  li{margin:5px 0}
+  .done{color:#15803d;font-weight:600}.next{color:#b45309;font-weight:600}.plan{color:#6b7280}
+  .tag{display:inline-block;background:#2E5AAC;color:#fff;border-radius:999px;
+       padding:1px 10px;font-size:12px;margin-right:6px}
+</style>
+<div class="banner">
+  <h1>Call Delivery — Streamlined Intake Process</h1>
+  <p>Standard template &nbsp;·&nbsp; Central shared folder &nbsp;·&nbsp; Automatic import (Power Query)</p>
+</div>
+
+<h1>What this replaces</h1>
+<p>Today, business groups send dialing schedules in ad-hoc formats and someone on the Call Delivery
+team retypes them into the master workbook tab by tab. The new process removes the retyping entirely:</p>
+<ul>
+<li>Every group fills in the <b>same standard template</b> (dropdowns, no free-typing).</li>
+<li>Groups save their file to <b>one central shared folder</b>.</li>
+<li>The master workbook <b>imports every group's file automatically</b> — one click: <code>Data → Refresh All</code>.</li>
+</ul>
+
+<h1>The three pieces</h1>
+<table>
+<tr><th>Piece</th><th>What it is</th></tr>
+<tr><td><b>Call_Delivery_Intake_Template.xlsx</b></td><td>The standard schedule template each business group fills in. One row per scheduled pass.</td></tr>
+<tr><td><b>Central Intake folder</b></td><td>A shared-drive folder. One subfolder per month, one file per group.</td></tr>
+<tr><td><b>Master workbook (Power Query)</b></td><td>Call Delivery's workbook. On refresh it pulls every group file from the folder into one consolidated table — feeds the Daily Rollup.</td></tr>
+</table>
+
+<h1>Instructions for the business groups</h1>
+<h2><span class="tag">1</span>Set the header once</h2>
+<ul><li>Pick your <b>Business Group</b> in cell <code>C5</code> — it auto-stamps every row.</li>
+<li>Fill in Period (month), Submitted By, and Submitted Date.</li></ul>
+
+<h2><span class="tag">2</span>Enter one row per scheduled pass</h2>
+<table>
+<tr><th>Column</th><th>What goes in it</th></tr>
+<tr><td><b>Date</b></td><td>The calendar day of the pass (mm/dd/yyyy).</td></tr>
+<tr><td><b>Start Time (ET)</b></td><td>The <b>Eastern</b> time the pass starts (e.g., 8:15 AM).</td></tr>
+<tr><td><b>Timezone Wave</b></td><td>Which zones dial in this pass: E, C, M, P, or a combo like E-C-M-P.</td></tr>
+<tr><td><b>List ID / Campaign</b></td><td>The campaign or list code (dropdown).</td></tr>
+<tr><td><b>Priority</b></td><td>1 = highest. Whole number 1–20.</td></tr>
+<tr><td><b>Segment / Tag</b></td><td>AMs, Branch, Blitz, TSC, Vendor, etc.</td></tr>
+<tr><td><b>Special Instructions</b></td><td>Anything the Call Delivery team should know.</td></tr>
+</table>
+
+<h2><span class="tag">3</span>Use the dropdowns — do not free-type</h2>
+<p>Consistent values are what allow the automatic import to work. Missing a value you need?
+Put it in Special Instructions and tell Call Delivery so it can be added to the lists.</p>
+
+<h2><span class="tag">4</span>Save to the shared folder with the exact name</h2>
+<pre>\\CallDelivery\Intake\&lt;YYYY-MM&gt;\&lt;GROUP&gt;.xlsx
+Example:  \\CallDelivery\Intake\2026-07\FE.xlsx</pre>
+<ul>
+<li>One file <b>per group per month</b>.</li>
+<li>Schedule changed? <b>Overwrite the same file</b> — the next refresh picks it up.</li>
+<li>Delete the three grey example rows before submitting.</li>
+<li>Do <b>not</b> rename the tabs or the <code>tblSchedule</code> table — the importer finds your data by that name.</li>
+</ul>
+
+<h1>For the Call Delivery team — the automatic import</h1>
+<p><i>One-time setup; afterwards updating the rollup is just <code>Data → Refresh All</code>.</i></p>
+<ol>
+<li>Open the master workbook → <b>Data → Get Data → Launch Power Query Editor</b>.</li>
+<li><b>New Source → Blank Query</b>, open the <b>Advanced Editor</b>, paste the query below.</li>
+<li>Set <code>FolderPath</code> to your real shared path (UNC or synced OneDrive/SharePoint path).</li>
+<li><b>Close &amp; Load To… → Table</b>.</li>
+</ol>
+<pre>let
+    // 1. Point at the current month's intake folder
+    FolderPath = "\\CallDelivery\Intake\2026-07",
+
+    Source     = Folder.Files(FolderPath),
+
+    // 2. Keep real .xlsx files only; drop Excel's temp lock files (~$...)
+    OnlyBooks  = Table.SelectRows(Source, each
+                    [Extension] = ".xlsx" and not Text.StartsWith([Name], "~$")),
+
+    // 3. From each workbook, grab the table named tblSchedule
+    WithData   = Table.AddColumn(OnlyBooks, "Data", each
+                    let
+                        Book = Excel.Workbook([Content], true),
+                        Tbl  = Book{[Item="tblSchedule", Kind="Table"]}[Data]
+                    in  Tbl),
+
+    // 4. Expand every group's rows into one long table
+    Expanded   = Table.ExpandTableColumn(WithData, "Data",
+                    {"Business Group","Date","Start Time (ET)","Timezone Wave",
+                     "List ID / Campaign","Priority","Segment / Tag","Special Instructions"}),
+
+    // 5. Drop blank rows (unused template rows have no Date)
+    NoBlanks   = Table.SelectRows(Expanded, each [Date] &lt;&gt; null and [Date] &lt;&gt; ""),
+
+    // 6. Type the columns; keep source filename for audit
+    Renamed    = Table.RenameColumns(NoBlanks, {{"Name", "Source File"}}),
+    Keep       = Table.SelectColumns(Renamed,
+                    {"Business Group","Date","Start Time (ET)","Timezone Wave",
+                     "List ID / Campaign","Priority","Segment / Tag",
+                     "Special Instructions","Source File"}),
+    Typed      = Table.TransformColumnTypes(Keep,
+                    {{"Date", type date}, {"Start Time (ET)", type time},
+                     {"Priority", Int64.Type}})
+in
+    Typed</pre>
+<ul>
+<li>The query finds each group's data by <b>table name</b> (<code>tblSchedule</code>), not sheet position — groups can add as many rows as they like.</li>
+<li>New month = one edit: change the <code>2026-07</code> in <code>FolderPath</code> and refresh.</li>
+<li>A bad or renamed file errors on that one file only; every other group still loads.</li>
+</ul>
+
+<h1>Roadmap</h1>
+<ul>
+<li><b>1. Standard intake template</b> — <span class="done">DONE (delivered)</span></li>
+<li><b>2. Master workbook (Power Query ingest)</b> — <span class="next">Next</span></li>
+<li><b>3. Assignment randomizer (fair rotation)</b> — <span class="plan">Planned</span></li>
+<li><b>4. Redesigned Daily Rollup (clean visual layout)</b> — <span class="plan">Planned</span></li>
+</ul>
