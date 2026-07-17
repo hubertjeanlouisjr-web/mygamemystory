@@ -46,7 +46,7 @@ def parse_label(lbl):
 src = openpyxl.load_workbook(SRC, data_only=True)
 def parse_sheet(name):
     ws=src[name]; rows=[]
-    for r in range(3, ws.max_row+1):
+    for r in range(3, 41):
         d=ws.cell(row=r,column=2).value
         if not isinstance(d,datetime.datetime) or d.year!=2026 or d.month!=7: continue
         note=ws.cell(row=r,column=3).value

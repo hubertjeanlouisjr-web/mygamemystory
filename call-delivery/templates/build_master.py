@@ -47,7 +47,7 @@ rows = [
  ("",""),
  ("WHY THIS REPLACES THE OLD TAB-PER-GROUP DESIGN","h2"),
  ("    The old master pulled each group's 'today' row through cross-sheet formulas, which is why","p"),
- ("    it accumulated 219 #REF! errors, one dead group (Auto), and an external-workbook link.","p"),
+ ("    it accumulated 219 broken-reference errors, one dead group (Auto), and an external-workbook link.","p"),
  ("    Here, data arrives by import, not by formula — deleting or renaming a group's file can","p"),
  ("    never break another group or the rollup.","p"),
 ]
