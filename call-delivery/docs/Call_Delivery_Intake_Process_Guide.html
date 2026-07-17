@@ -70,10 +70,10 @@ team retypes them into the master workbook tab by tab. The new process removes t
 Put it in Special Instructions and tell Call Delivery so it can be added to the lists.</p>
 
 <h2><span class="tag">4</span>Save to the shared folder with the exact name</h2>
-<pre>\\CallDelivery\Intake\&lt;YYYY-MM&gt;\&lt;GROUP&gt;.xlsx
-Example:  \\CallDelivery\Intake\2026-07\FE.xlsx</pre>
+<pre>\\CallDelivery\Intake\&lt;YOUR GROUP&gt;\&lt;YYYY-MM&gt;.xlsx
+Example:  \\CallDelivery\Intake\FE\2026-08.xlsx</pre>
 <ul>
-<li>One file <b>per group per month</b>.</li>
+<li>Each group has its <b>own folder</b> (write access to that folder only); one file per month named <code>YYYY-MM.xlsx</code>.</li>
 <li>Schedule changed? <b>Overwrite the same file</b> — the next refresh picks it up.</li>
 <li>Delete the three grey example rows before submitting.</li>
 <li>Do <b>not</b> rename the tabs or the <code>tblSchedule</code> table — the importer finds your data by that name.</li>
@@ -84,37 +84,43 @@ Example:  \\CallDelivery\Intake\2026-07\FE.xlsx</pre>
 <ol>
 <li>Open the master workbook → <b>Data → Get Data → Launch Power Query Editor</b>.</li>
 <li><b>New Source → Blank Query</b>, open the <b>Advanced Editor</b>, paste the query below.</li>
-<li>Set <code>FolderPath</code> to your real shared path (UNC or synced OneDrive/SharePoint path).</li>
+<li>Set <code>IntakeRoot</code> to your real shared path (UNC or synced OneDrive/SharePoint path) — one time only.</li>
 <li><b>Close &amp; Load To… → Table</b>.</li>
 </ol>
 <pre>let
-    // 1. Point at the current month's intake folder
-    FolderPath = "\\CallDelivery\Intake\2026-07",
+    // 1. The Intake ROOT - set once, never changes month to month
+    IntakeRoot = "\CallDelivery\Intake",
 
-    Source     = Folder.Files(FolderPath),
+    // 2. The month to load (e.g. "2026-08") - read from Settings via
+    //    the IntakeMonth named range
+    Month      = Excel.CurrentWorkbook(){[Name="IntakeMonth"]}[Content]{0}[Column1],
 
-    // 2. Keep real .xlsx files only; drop Excel's temp lock files (~$...)
+    // 3. Read every group subfolder under the root
+    Source     = Folder.Files(IntakeRoot),
+
+    // 4. Keep this month's real .xlsx files; drop temp lock files (~$...)
     OnlyBooks  = Table.SelectRows(Source, each
-                    [Extension] = ".xlsx" and not Text.StartsWith([Name], "~$")),
+                    [Extension] = ".xlsx"
+                    and not Text.StartsWith([Name], "~$")
+                    and Text.StartsWith([Name], Month)),
 
-    // 3. From each workbook, grab the table named tblSchedule
+    // 5. From each workbook, grab the table named tblSchedule
     WithData   = Table.AddColumn(OnlyBooks, "Data", each
-                    let
-                        Book = Excel.Workbook([Content], true),
-                        Tbl  = Book{[Item="tblSchedule", Kind="Table"]}[Data]
-                    in  Tbl),
+                    Excel.Workbook([Content], true){[Item="tblSchedule", Kind="Table"]}[Data]),
 
-    // 4. Expand every group's rows into one long table
+    // 6. Expand every group's rows into one long table
     Expanded   = Table.ExpandTableColumn(WithData, "Data",
                     {"Business Group","Date","Start Time (ET)","Timezone Wave",
                      "List ID / Campaign","Priority","Segment / Tag","Special Instructions"}),
 
-    // 5. Drop blank rows (unused template rows have no Date)
+    // 7. Drop blank rows (unused template rows have no Date)
     NoBlanks   = Table.SelectRows(Expanded, each [Date] &lt;&gt; null and [Date] &lt;&gt; ""),
 
-    // 6. Type the columns; keep source filename for audit
-    Renamed    = Table.RenameColumns(NoBlanks, {{"Name", "Source File"}}),
-    Keep       = Table.SelectColumns(Renamed,
+    // 8. Source File = "GroupFolderile.xlsx" - makes duplicates visible
+    WithSrc    = Table.AddColumn(NoBlanks, "Source File", each
+                    Text.AfterDelimiter([Folder Path], IntakeRoot &amp; "") &amp; [Name]),
+
+    Keep       = Table.SelectColumns(WithSrc,
                     {"Business Group","Date","Start Time (ET)","Timezone Wave",
                      "List ID / Campaign","Priority","Segment / Tag",
                      "Special Instructions","Source File"}),
@@ -125,7 +131,7 @@ in
     Typed</pre>
 <ul>
 <li>The query finds each group's data by <b>table name</b> (<code>tblSchedule</code>), not sheet position — groups can add as many rows as they like.</li>
-<li>New month = one edit: change the <code>2026-07</code> in <code>FolderPath</code> and refresh.</li>
+<li>New month: change the <b>Month to load</b> cell on the master's Settings tab and Refresh All — the query path itself never changes.</li>
 <li>A bad or renamed file errors on that one file only; every other group still loads.</li>
 </ul>
 

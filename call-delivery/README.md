@@ -10,8 +10,8 @@ automatically via Power Query.
 | Path | What it is |
 |---|---|
 | `templates/Call_Delivery_Intake_Template.xlsx` | The standard template every business group fills in. Locked format, dropdown-driven, one row per scheduled pass. |
-| `intake/` | The central drop location. One subfolder per month, one file per group. |
-| `docs/PowerQuery-Import.md` | The Power Query (M) code the master workbook uses to ingest the whole `intake/<month>/` folder in one refresh. |
+| `intake/` | The central drop location. One subfolder per GROUP, files named by month (`FE/2026-08.xlsx`). |
+| `docs/PowerQuery-Import.md` | The Power Query (M) code the master workbook uses to ingest every group folder under `intake/` in one refresh. |
 
 ## How the process works
 
@@ -19,31 +19,33 @@ automatically via Power Query.
 Business groups                Central shared folder                 Call Delivery master workbook
 ─────────────────              ─────────────────────                 ─────────────────────────────
 Fill the standard    ──save──▶  \CallDelivery\Intake\      ──Power──▶  Refresh → all groups appended
-template (dropdowns)            2026-07\FE.xlsx             Query       → Daily Rollup + Assignments
-                                2026-07\BE.xlsx                          (no copy/paste, no #REF!)
-                                2026-07\PCO.xlsx  ...
+template (dropdowns)            FE\2026-08.xlsx             Query       → Daily Rollup + Assignments
+                                BE\2026-08.xlsx                          (no copy/paste, no #REF!)
+                                Card\2026-08.xlsx  ...
 ```
 
 ## Central folder layout & naming
 
 ```
 \CallDelivery\Intake\
-    2026-07\
-        FE.xlsx
-        BE.xlsx
-        PCO.xlsx
-        Repo.xlsx
-        ...one file per business group...
-    2026-08\
-        ...
+    FE\
+        2026-07.xlsx
+        2026-08.xlsx
+    BE\
+        2026-08.xlsx
+    Card\
+        ...one folder per business group...
 ```
 
 **Rules**
 
-- One file **per group per month**. Filename = the group's short name (matches the
-  `Business Group` dropdown), e.g. `FE.xlsx`.
-- When a group's schedule changes, they **overwrite the same file** — the next master
-  refresh picks it up.
+- One folder **per group**; grant each group write access to **their folder only** —
+  nobody can overwrite another group's schedule.
+- Files are named by month (`YYYY-MM.xlsx`). When a group's schedule changes, they
+  **overwrite the same file** — never add a "v2" copy (two files for one month both
+  import; the Source File column exposes it).
+- The master's query points at the Intake root once and filters by the month cell on
+  its Settings tab — no path edits at month roll-over.
 - Groups never touch the master workbook. They only ever open their own template file.
 
 ## Why the template is shaped the way it is
