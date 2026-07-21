@@ -13,8 +13,17 @@ F=lambda **kw: Font(name="Arial",**kw)
 
 src=openpyxl.load_workbook(SRC, data_only=True)
 wb=openpyxl.load_workbook(P)
-for n in ("Ref Voice","Ref AM Voice IDs","Ref Card Hours","Ref Branch Strategy","Ref Blitz Rules"):
+for n in ("Ref Voice","Ref AM Voice IDs","Ref Card Hours","Ref Branch Strategy","Ref Blitz Rules","Ref Group Numbers"):
     if n in wb.sheetnames: del wb[n]
+
+# Dialer group numbers per business group (from the original workbook's "Group #'s" column).
+# Single source of truth: the Daily Rollup looks these up by Business Group name.
+GROUP_NUMBERS = [
+    ("FE","14 / 54"), ("BE","12 / 52"), ("PCO","11 / 51"), ("Auto","36 / 76 / 116"),
+    ("Repo","17 / 57"), ("MOD","18 / 58"), ("Branch Central","15 / 55"),
+    ("Branch Vendor","79 (Vendor)"), ("Card","40 / 80"), ("ARC","7 / 47"),
+    ("Optional Products","130 / 131"), ("Call Escalation Team","37 / 77"),
+]
 
 def new_sheet(name, title):
     sh=wb.create_sheet(name); sh.sheet_view.showGridLines=False
@@ -104,6 +113,18 @@ for i in range(2,19):
             c.font=F(size=10,bold=True,color=NAVY)
 sh.cell(row=r+2,column=1,value="Per-date blitz calendars live in each group's intake file (FE/BE notes panel).").font=F(italic=True,size=9,color="6B7280")
 for c,w in {"A":6,"B":16,"C":42,"D":6,"E":6,"F":16,"G":42}.items(): sh.column_dimensions[c].width=w
+
+# ---- Ref Group Numbers ----
+sh=new_sheet("Ref Group Numbers","DIALER GROUP NUMBERS — per business group (Daily Rollup reads this)")
+hdr(sh,2,["Business Group","Group #'s"])
+r=2
+for name,num in GROUP_NUMBERS:
+    r+=1
+    c=sh.cell(row=r,column=1,value=name); c.border=box; c.font=F(size=10)
+    c=sh.cell(row=r,column=2,value=num); c.border=box; c.font=F(size=10)
+    c.alignment=Alignment(horizontal="center")
+sh.cell(row=r+2,column=1,value="Edit a group's number here and it updates on the Daily Rollup automatically.").font=F(italic=True,size=9,color="6B7280")
+sh.column_dimensions["A"].width=24; sh.column_dimensions["B"].width=16
 
 wb.save(P)
 print("reference tabs added:", [n for n in wb.sheetnames])

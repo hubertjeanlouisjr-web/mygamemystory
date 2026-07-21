@@ -1,5 +1,6 @@
 """Step 4: redesigned Daily Rollup tab inside the master workbook.
-Reads tblConsolidated (Consolidated!B5:J659) via a hidden helper sheet."""
+Reads tblConsolidated via a hidden helper sheet; ranges are sized to the
+actual Consolidated table so late-month dates are never dropped."""
 import openpyxl, datetime
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.formatting.rule import Rule
@@ -17,10 +18,15 @@ wb = openpyxl.load_workbook(P)
 for name in ("Daily Rollup","RollupData"):
     if name in wb.sheetnames: del wb[name]
 
-# ---------- hidden helper ----------
+# ---------- hidden helper (sized to the real Consolidated table) ----------
+co = wb["Consolidated"]
+cref = co.tables["tblConsolidated"].ref                      # e.g. "B4:J821"
+N_FIRST = 5                                                  # data starts row 5 (header row 4)
+N_LAST  = int(''.join(ch for ch in cref.split(":")[1] if ch.isdigit()))
+CB=f"Consolidated!$B$5:$B${N_LAST}"; CC=f"Consolidated!$C$5:$C${N_LAST}"
+
 hd = wb.create_sheet("RollupData")
 hd["A1"]="key grp|date|hour"; hd["B1"]="display"; hd["C1"]="key grp|date"; hd["D1"]="note"
-N_FIRST, N_LAST = 5, 659   # Consolidated data rows
 for i in range(N_FIRST, N_LAST+1):
     r = i - N_FIRST + 2
     hd[f"A{r}"]=(f'=IF(Consolidated!B{i}="","",Consolidated!B{i}&"|"'
@@ -32,10 +38,13 @@ for i in range(N_FIRST, N_LAST+1):
                  f'&TEXT(Consolidated!C{i},"yyyymmdd"))')
     hd[f"D{r}"]=f'=IF(Consolidated!I{i}="","",Consolidated!I{i})'
 hd.sheet_state = "hidden"
-KEY=f"RollupData!$A$2:$A${N_LAST-N_FIRST+2}"
-DISP=f"RollupData!$B$2:$B${N_LAST-N_FIRST+2}"
-KEY2=f"RollupData!$C$2:$C${N_LAST-N_FIRST+2}"
-NOTE=f"RollupData!$D$2:$D${N_LAST-N_FIRST+2}"
+HELP_LAST = N_LAST - N_FIRST + 2
+KEY=f"RollupData!$A$2:$A${HELP_LAST}"
+DISP=f"RollupData!$B$2:$B${HELP_LAST}"
+KEY2=f"RollupData!$C$2:$C${HELP_LAST}"
+NOTE=f"RollupData!$D$2:$D${HELP_LAST}"
+GNUM_LK="'Ref Group Numbers'!$A$3:$A$40"
+GNUM_VAL="'Ref Group Numbers'!$B$3:$B$40"
 
 # ---------- Daily Rollup ----------
 dr = wb.create_sheet("Daily Rollup", 0)
@@ -64,7 +73,7 @@ dr["C5"].alignment=Alignment(horizontal="center")
 dr["E5"]="Auto-Messaging Voice:"; dr["E5"].font=F(bold=True,color=NAVY)
 dr["E5"].alignment=Alignment(horizontal="right")
 dr.merge_cells("E5:F5")
-dr["G5"]="Female"; dr["G5"].font=F(bold=True,color=INPUT_BLUE); dr["G5"].fill=fill(YELLOW)
+dr["G5"]='=IFERROR(INDEX(\'Ref Voice\'!$B$2:$B$40,MATCH($C$5,\'Ref Voice\'!$A$2:$A$40,0)),"")'; dr["G5"].font=F(bold=True,color=INPUT_BLUE); dr["G5"].fill=fill(YELLOW)
 dr["G5"].border=box; dr["G5"].alignment=Alignment(horizontal="center")
 dr.merge_cells("I5:S5")
 n=dr["I5"]; n.value="Yellow cells are yours: set the date (or type =TODAY() for live use) and the voice for the day."
@@ -72,49 +81,61 @@ n.font=F(italic=True,size=9,color="6B7280"); n.alignment=Alignment(vertical="cen
 
 # ---- schedule grid ----
 GRID_HDR = 7
-GROUPS = ["FE","BE","PCO","Auto","Repo","MOD","Branch Central","Branch Vendor"]
+GROUPS = ["FE","BE","PCO","Auto","Repo","MOD","Branch Central","Branch Vendor",
+          "Card","ARC","Optional Products","Call Escalation Team"]
 HOURS = list(range(8,22))   # 8:00 .. 21:00
-c=dr.cell(row=GRID_HDR,column=2,value="Business Group")
+COL_GROUP, COL_GNUM, COL_PASSES = 2, 3, 4
+COL_H0 = 5                            # first hour column (E)
+COL_INSTR = COL_H0 + len(HOURS)       # Special Instructions (S)
+
+c=dr.cell(row=GRID_HDR,column=COL_GROUP,value="Business Group")
 c.font=F(bold=True,color=WHITE); c.fill=fill(NAVY); c.border=box
 c.alignment=Alignment(horizontal="left",vertical="center",indent=1)
-c=dr.cell(row=GRID_HDR,column=3,value="Passes")
+c=dr.cell(row=GRID_HDR,column=COL_GNUM,value="Group #'s")
+c.font=F(bold=True,color=WHITE,size=9); c.fill=fill(NAVY); c.border=box
+c.alignment=Alignment(horizontal="center",vertical="center")
+c=dr.cell(row=GRID_HDR,column=COL_PASSES,value="Passes")
 c.font=F(bold=True,color=WHITE,size=9); c.fill=fill(NAVY); c.border=box
 c.alignment=Alignment(horizontal="center",vertical="center")
 for j,h in enumerate(HOURS):
-    c=dr.cell(row=GRID_HDR,column=4+j,value=datetime.time(h,0))
+    c=dr.cell(row=GRID_HDR,column=COL_H0+j,value=datetime.time(h,0))
     c.number_format="h AM/PM"
     c.font=F(bold=True,color=WHITE,size=9); c.fill=fill(BLUE); c.border=box
     c.alignment=Alignment(horizontal="center",vertical="center")
-c=dr.cell(row=GRID_HDR,column=4+len(HOURS),value="Special Instructions")
+c=dr.cell(row=GRID_HDR,column=COL_INSTR,value="Special Instructions")
 c.font=F(bold=True,color=WHITE); c.fill=fill(NAVY); c.border=box
 c.alignment=Alignment(horizontal="center",vertical="center")
 dr.row_dimensions[GRID_HDR].height=20
 
 for i,g in enumerate(GROUPS):
     r=GRID_HDR+1+i
-    c=dr.cell(row=r,column=2,value=g)
+    rowfill = GREY if i%2 else WHITE
+    c=dr.cell(row=r,column=COL_GROUP,value=g)
     c.font=F(bold=True,color=NAVY); c.border=box
-    c.alignment=Alignment(vertical="center",indent=1)
-    c.fill=fill(GREY if i%2 else WHITE)
-    c=dr.cell(row=r,column=3,
-        value=f'=COUNTIFS(Consolidated!$B$5:$B$659,$B{r},Consolidated!$C$5:$C$659,$C$5)')
+    c.alignment=Alignment(vertical="center",indent=1); c.fill=fill(rowfill)
+    c=dr.cell(row=r,column=COL_GNUM,
+        value=f'=IFERROR(INDEX({GNUM_VAL},MATCH($B{r},{GNUM_LK},0)),"")')
+    c.font=F(size=9,bold=True,color=NAVY); c.border=box
+    c.alignment=Alignment(horizontal="center",vertical="center"); c.fill=fill(rowfill)
+    c=dr.cell(row=r,column=COL_PASSES,
+        value=f'=COUNTIFS({CB},$B{r},{CC},$C$5)')
     c.font=F(size=9,color="6B7280"); c.border=box; c.alignment=Alignment(horizontal="center",vertical="center")
     for j,h in enumerate(HOURS):
-        cell=dr.cell(row=r,column=4+j)
+        cell=dr.cell(row=r,column=COL_H0+j)
         cell.value=(f'=IFERROR(INDEX({DISP},MATCH($B{r}&"|"&TEXT($C$5,"yyyymmdd")&"|"&{h},{KEY},0)),"")')
         cell.border=box; cell.font=F(size=8)
         cell.alignment=Alignment(horizontal="center",vertical="center",wrap_text=True)
-    c=dr.cell(row=r,column=4+len(HOURS),
+    c=dr.cell(row=r,column=COL_INSTR,
         value=f'=IFERROR(INDEX({NOTE},MATCH($B{r}&"|"&TEXT($C$5,"yyyymmdd"),{KEY2},0)),"")')
     c.border=box; c.font=F(size=9,italic=True,color=GREEN)
     c.alignment=Alignment(vertical="center",indent=1,wrap_text=True)
     dr.row_dimensions[r].height=30
 LAST_GRID_ROW = GRID_HDR+len(GROUPS)
 
-# tag colors via conditional formatting (containsText)
-grid_rng=f"D{GRID_HDR+1}:{get_column_letter(3+len(HOURS))}{LAST_GRID_ROW}"
+# tag colors via conditional formatting (containsText) over the hour cells
+grid_rng=f"{get_column_letter(COL_H0)}{GRID_HDR+1}:{get_column_letter(COL_H0+len(HOURS)-1)}{LAST_GRID_ROW}"
 def contains_rule(text, color):
-    first = f"D{GRID_HDR+1}"
+    first = f"{get_column_letter(COL_H0)}{GRID_HDR+1}"
     return Rule(type="containsText", operator="containsText", text=text,
         formula=[f'NOT(ISERROR(SEARCH("{text}",{first})))'],
         dxf=openpyxl.styles.differential.DifferentialStyle(fill=fill(color)))
@@ -161,7 +182,7 @@ for k,h in enumerate(["Area","Groups","Open","Close"]):
     c.font=F(bold=True,color=WHITE,size=9); c.fill=fill(BLUE); c.border=box
     c.alignment=Alignment(horizontal="center")
 for k,(area,grps,o,cl) in enumerate([
-        ("Card Collections","40 / 80","8:00 AM","8:00 PM"),
+        ("Card Collections","40 / 80",'=IFERROR(INDEX(\'Ref Card Hours\'!$B$2:$B$40,MATCH(\'Daily Rollup\'!$C$5,\'Ref Card Hours\'!$A$2:$A$40,0)),"")','=IFERROR(INDEX(\'Ref Card Hours\'!$C$2:$C$40,MATCH(\'Daily Rollup\'!$C$5,\'Ref Card Hours\'!$A$2:$A$40,0)),"")'),
         ("Call Escalation Team","37 / 77","8:00 AM","5:00 PM"),
         ("Optional Products","130 / 131","8:00 AM","6:00 PM")]):
     r=hdr_r+1+k
@@ -178,11 +199,13 @@ c=dr.cell(row=fr,column=2,
     value="This page rebuilds itself from the Consolidated tab — refresh the import, pick a date, and it's ready to send. No cross-sheet formula web, nothing to break.")
 c.font=F(italic=True,size=9,color="6B7280")
 
-dr.column_dimensions["B"].width=17; dr.column_dimensions["C"].width=7
+dr.column_dimensions["B"].width=17
+dr.column_dimensions[get_column_letter(COL_GNUM)].width=12
+dr.column_dimensions[get_column_letter(COL_PASSES)].width=7
 for j in range(len(HOURS)):
-    dr.column_dimensions[get_column_letter(4+j)].width=11
-dr.column_dimensions[get_column_letter(4+len(HOURS))].width=30
-dr.freeze_panes=f"D{GRID_HDR+1}"
+    dr.column_dimensions[get_column_letter(COL_H0+j)].width=11
+dr.column_dimensions[get_column_letter(COL_INSTR)].width=30
+dr.freeze_panes=f"{get_column_letter(COL_H0)}{GRID_HDR+1}"
 
 wb.save(P)
-print("Daily Rollup added to master")
+print(f"Daily Rollup added (Group # column + dynamic ranges to row {N_LAST})")
